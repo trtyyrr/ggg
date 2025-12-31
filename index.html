@@ -1,90 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8"><title>Valae Android Factory</title>
+    <meta charset="UTF-8"><title>Valae Magisk Factory</title>
     <style>
-        body { background: #0a0a0a; color: #00ff41; font-family: 'Courier New', monospace; padding: 20px; line-height: 1.5; }
-        .container { max-width: 850px; margin: 0 auto; border: 1px solid #00ff41; padding: 30px; box-shadow: 0 0 20px rgba(0,255,65,0.2); }
-        textarea { width: 100%; height: 150px; background: #000; color: #00ff41; border: 1px solid #00ff41; padding: 10px; font-size: 1.1em; margin: 20px 0; outline: none; }
-        button { background: #00ff41; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1.2em; text-transform: uppercase; }
-        button:hover { background: #008f11; }
-        #log { margin-top: 25px; border-top: 1px dashed #00ff41; padding-top: 15px; font-size: 0.9em; height: 200px; overflow-y: auto; }
-        .success { color: #fff; font-weight: bold; }
-        .cmd { color: #888; }
+        :root { --neon: #ff003c; --bg: #0d0d0d; } /* 换成热血的红色 */
+        body { background: var(--bg); color: var(--neon); font-family: monospace; padding: 20px; }
+        .factory-card { max-width: 850px; margin: 0 auto; border: 2px solid var(--neon); padding: 30px; box-shadow: 0 0 20px var(--neon); }
+        textarea { width: 100%; height: 150px; background: #000; color: #fff; border: 1px solid var(--neon); padding: 15px; margin: 20px 0; }
+        button { background: var(--neon); color: #fff; border: none; width: 100%; padding: 20px; font-weight: bold; cursor: pointer; }
+        #console { background: #000; border: 1px solid #333; height: 200px; overflow-y: auto; padding: 15px; margin-top: 20px; color: #888; font-size: 12px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>🛰️ VALAE: CLOUD APK FACTORY</h2>
-        <div class="cmd">SYSTEM STATUS: READY_TO_BUILD</div>
-        <textarea id="prompt" placeholder="在此输入你的APP创意，例如：制作一个简单的计算器，背景是深灰色的。"></textarea>
-        <button onclick="startBuild()">启动全自动化流水线</button>
-        <div id="log">等待指令输入...</div>
-    </div>
 
-    <script>
-        // 🔑 重要：如果你用了 Vercel 环境变量，请确保名字对应。如果直接填，请拆分字符串避免拦截。
-        const DS_KEY = "你的DEEPSEEK密钥"; 
-        const GH_TOKEN = "你的GITHUB密钥"; 
-        const REPO = "你的用户名/仓库名"; 
+<div class="factory-card">
+    <h1>🔥 VALAE MAGISK FACTORY</h1>
+    <p>输入模块功能描述（如：修改系统 DPI、隐藏应用、优化电池）</p>
+    <textarea id="prompt" placeholder="示例：做一个修改系统字体为思源黑体的模块。"></textarea>
+    <button onclick="ignite()">一键合成 Magisk 模块</button>
+    <div id="console">READY_TO_ROOT...</div>
+</div>
 
-        const SYSTEM_PROMPT = `你是一个安卓架构师。输出必须严格为 JSON 格式，包含以下 4 个标准文件：
-        1. build.gradle (根目录配置文件)
-        2. app/build.gradle (APP 模块配置)
-        3. app/src/main/AndroidManifest.xml (系统清单)
-        4. app/src/main/java/com/valae/ai/MainActivity.java (业务逻辑)
-        要求：包名统一使用 com.valae.ai，所有代码写在 MainActivity 中。`;
+<script>
+    const DS_KEY = "sk-你的Key"; 
+    const GH_TOKEN = "ghp_你的Token"; 
+    const REPO = "用户名/仓库名"; 
 
-        async function log(msg, isSuccess = false) {
-            const l = document.getElementById('log');
-            l.innerHTML += `<div class="${isSuccess?'success':''}">> ${msg}</div>`;
-            l.scrollTop = l.scrollHeight;
-        }
+    const SYSTEM_PROMPT = `你是一个 Magisk 模块开发专家。
+    请根据需求输出 JSON 格式的文件列表，必须包含：
+    1. module.prop (包含 id, name, version, versionCode, author, description)
+    2. service.sh (执行功能的脚本)
+    3. install.sh (安装脚本)
+    4. 必要的 system 文件夹路径。
+    格式：{"files": [{"path": "module.prop", "content": "..."}, {"path": "service.sh", "content": "..."}]}`;
 
-        async function startBuild() {
-            const prompt = document.getElementById('prompt').value;
-            if(!prompt) return;
-            document.getElementById('log').innerHTML = ""; // 清空日志
-            log("正在初始化 AI 引擎...");
+    async function log(msg, color) {
+        const c = document.getElementById('console');
+        c.innerHTML += `<div style="color:${color}">> ${msg}</div>`;
+        c.scrollTop = c.scrollHeight;
+    }
 
-            try {
-                // 1. 调用 AI
-                const aiRes = await fetch('https://api.deepseek.com/chat/completions', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${DS_KEY}`},
+    async function ignite() {
+        const prompt = document.getElementById('prompt').value;
+        if(!prompt) return;
+        document.getElementById('console').innerHTML = "";
+        log("AI 正在构建模块代码...", "yellow");
+
+        try {
+            const res = await fetch('https://api.deepseek.com/chat/completions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${DS_KEY}`},
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [{role: "system", content: SYSTEM_PROMPT}, {role: "user", content: prompt}],
+                    response_format: { type: 'json_object' }
+                })
+            });
+
+            const data = await res.json();
+            const files = JSON.parse(data.choices[0].message.content).files;
+
+            for (const file of files) {
+                log(`正在注入: ${file.path}`, "gray");
+                const ghUrl = `https://api.github.com/repos/${REPO}/contents/${file.path}`;
+                let sha = "";
+                const check = await fetch(ghUrl, { headers: {'Authorization': `token ${GH_TOKEN}`} });
+                if(check.ok) { const meta = await check.json(); sha = meta.sha; }
+
+                await fetch(ghUrl, {
+                    method: 'PUT',
+                    headers: {'Authorization': `token ${GH_TOKEN}`, 'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [{role: "system", content: SYSTEM_PROMPT}, {role: "user", content: prompt}],
-                        response_format: { type: 'json_object' }
+                        message: `Magisk Build: ${file.path}`,
+                        content: btoa(unescape(encodeURIComponent(file.content))),
+                        sha: sha || undefined
                     })
                 });
-                const aiData = await aiRes.json();
-                const files = JSON.parse(aiData.choices[0].message.content).files;
-                log("AI 架构设计完成，开始同步至 GitHub...", true);
-
-                // 2. 批量推送至 GitHub
-                for (const file of files) {
-                    log(`正在写入: ${file.path}`);
-                    const ghUrl = `https://api.github.com/repos/${REPO}/contents/${file.path}`;
-                    
-                    let sha = "";
-                    const getFile = await fetch(ghUrl, { headers: {'Authorization': `token ${GH_TOKEN}`} });
-                    if(getFile.ok) { const fd = await getFile.json(); sha = fd.sha; }
-
-                    const putRes = await fetch(ghUrl, {
-                        method: 'PUT',
-                        headers: {'Authorization': `token ${GH_TOKEN}`, 'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            message: `V-Factory Build: ${file.path}`,
-                            content: btoa(unescape(encodeURIComponent(file.content))),
-                            sha: sha || undefined
-                        })
-                    });
-                    if(putRes.ok) log(`[OK] ${file.path} 同步成功`, true);
-                }
-                log("✨ 任务全部完成！GitHub Actions 已自动启动，请稍后下载 APK。", true);
-            } catch (e) { log("💥 致命错误: " + e.message); }
-        }
-    </script>
+            }
+            log("✨ 模块源码已推送到 GitHub！正在自动打包 ZIP...", "#00ff41");
+        } catch (e) { log("错误: " + e.message, "red"); }
+    }
+</script>
 </body>
 </html>
