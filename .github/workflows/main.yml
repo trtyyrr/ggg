@@ -1,0 +1,30 @@
+name: Valae Auto Build
+on: [push] # 每次代码推送到 Git，自动打包
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Build with Gradle
+        # 这里尝试自动生成 wrapper 如果缺失的话
+        run: |
+          if [ ! -f "gradlew" ]; then
+            gradle wrapper
+          fi
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: Valae-Built-App
+          path: app/build/outputs/apk/debug/*.apk
