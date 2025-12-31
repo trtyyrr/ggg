@@ -1,72 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8"><title>Valae 自动化工厂</title>
+    <meta charset="UTF-8"><title>Valae Android Factory</title>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
-        .box { border: 1px solid #0f0; padding: 20px; max-width: 600px; margin: 0 auto; }
-        textarea { width: 100%; height: 100px; background: #111; color: #0f0; border: 1px solid #0f0; margin: 10px 0; }
-        button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; width: 100%; }
-        #log { margin-top: 20px; font-size: 0.8em; color: #888; }
+        body { background: #0a0a0a; color: #00ff41; font-family: 'Courier New', monospace; padding: 20px; line-height: 1.5; }
+        .container { max-width: 850px; margin: 0 auto; border: 1px solid #00ff41; padding: 30px; box-shadow: 0 0 20px rgba(0,255,65,0.2); }
+        textarea { width: 100%; height: 150px; background: #000; color: #00ff41; border: 1px solid #00ff41; padding: 10px; font-size: 1.1em; margin: 20px 0; outline: none; }
+        button { background: #00ff41; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1.2em; text-transform: uppercase; }
+        button:hover { background: #008f11; }
+        #log { margin-top: 25px; border-top: 1px dashed #00ff41; padding-top: 15px; font-size: 0.9em; height: 200px; overflow-y: auto; }
+        .success { color: #fff; font-weight: bold; }
+        .cmd { color: #888; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h3>🚀 一句话写代码并存入 Git</h3>
-        <textarea id="prompt" placeholder="例如：帮我写一个猜数字游戏的 Python 脚本"></textarea>
-        <button onclick="startFactory()">开始生产并推送</button>
-        <div id="log">等待指令...</div>
+    <div class="container">
+        <h2>🛰️ VALAE: CLOUD APK FACTORY</h2>
+        <div class="cmd">SYSTEM STATUS: READY_TO_BUILD</div>
+        <textarea id="prompt" placeholder="在此输入你的APP创意，例如：制作一个简单的计算器，背景是深灰色的。"></textarea>
+        <button onclick="startBuild()">启动全自动化流水线</button>
+        <div id="log">等待指令输入...</div>
     </div>
 
     <script>
-        // 🔑 填入你的三个核心信息
-        const DS_KEY = ""; 
-        const GH_TOKEN = ""; 
-        const REPO = "trtyyrr/ggg"; // 例如: rty13840/Valae
+        // 🔑 重要：如果你用了 Vercel 环境变量，请确保名字对应。如果直接填，请拆分字符串避免拦截。
+        const DS_KEY = "你的DEEPSEEK密钥"; 
+        const GH_TOKEN = "你的GITHUB密钥"; 
+        const REPO = "你的用户名/仓库名"; 
 
-        async function startFactory() {
+        const SYSTEM_PROMPT = `你是一个安卓架构师。输出必须严格为 JSON 格式，包含以下 4 个标准文件：
+        1. build.gradle (根目录配置文件)
+        2. app/build.gradle (APP 模块配置)
+        3. app/src/main/AndroidManifest.xml (系统清单)
+        4. app/src/main/java/com/valae/ai/MainActivity.java (业务逻辑)
+        要求：包名统一使用 com.valae.ai，所有代码写在 MainActivity 中。`;
+
+        async function log(msg, isSuccess = false) {
+            const l = document.getElementById('log');
+            l.innerHTML += `<div class="${isSuccess?'success':''}">> ${msg}</div>`;
+            l.scrollTop = l.scrollHeight;
+        }
+
+        async function startBuild() {
             const prompt = document.getElementById('prompt').value;
-            const log = document.getElementById('log');
             if(!prompt) return;
+            document.getElementById('log').innerHTML = ""; // 清空日志
+            log("正在初始化 AI 引擎...");
 
-            log.innerText = "正在让 AI 写代码...";
-            
-            // 1. 让 AI 生成代码
-            const aiRes = await fetch('https://api.deepseek.com/chat/completions', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${DS_KEY}`},
-                body: JSON.stringify({
-                    model: "deepseek-chat",
-                    messages: [{role: "user", content: prompt + "。请直接给出代码内容，不要解释，不要带 markdown 代码块符号。"}]
-                })
-            });
-            const aiData = await aiRes.json();
-            const code = aiData.choices[0].message.content;
+            try {
+                // 1. 调用 AI
+                const aiRes = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${DS_KEY}`},
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{role: "system", content: SYSTEM_PROMPT}, {role: "user", content: prompt}],
+                        response_format: { type: 'json_object' }
+                    })
+                });
+                const aiData = await aiRes.json();
+                const files = JSON.parse(aiData.choices[0].message.content).files;
+                log("AI 架构设计完成，开始同步至 GitHub...", true);
 
-            // 2. 将代码存入 GitHub (默认存为 output.py，你也可以改成别的)
-            log.innerText = "AI 完工，正在推送到 GitHub...";
-            const fileName = "output.py";
-            
-            // 获取文件的 SHA (如果文件已存在需要这一步，为了简单，我们假设是新文件)
-            const ghUrl = `https://api.github.com/repos/${REPO}/contents/${fileName}`;
-            
-            const ghRes = await fetch(ghUrl, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${GH_TOKEN}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: `AI generated ${fileName}`,
-                    content: btoa(unescape(encodeURIComponent(code))) // 将代码转为 Base64
-                })
-            });
+                // 2. 批量推送至 GitHub
+                for (const file of files) {
+                    log(`正在写入: ${file.path}`);
+                    const ghUrl = `https://api.github.com/repos/${REPO}/contents/${file.path}`;
+                    
+                    let sha = "";
+                    const getFile = await fetch(ghUrl, { headers: {'Authorization': `token ${GH_TOKEN}`} });
+                    if(getFile.ok) { const fd = await getFile.json(); sha = fd.sha; }
 
-            if(ghRes.ok) {
-                log.innerText = `✅ 成功！文件已存入仓库：${fileName}`;
-            } else {
-                log.innerText = "❌ 推送失败，请检查 Token 权限或仓库路径";
-            }
+                    const putRes = await fetch(ghUrl, {
+                        method: 'PUT',
+                        headers: {'Authorization': `token ${GH_TOKEN}`, 'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            message: `V-Factory Build: ${file.path}`,
+                            content: btoa(unescape(encodeURIComponent(file.content))),
+                            sha: sha || undefined
+                        })
+                    });
+                    if(putRes.ok) log(`[OK] ${file.path} 同步成功`, true);
+                }
+                log("✨ 任务全部完成！GitHub Actions 已自动启动，请稍后下载 APK。", true);
+            } catch (e) { log("💥 致命错误: " + e.message); }
         }
     </script>
 </body>
